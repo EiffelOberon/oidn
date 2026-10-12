@@ -73,6 +73,7 @@ OIDN_DEFINE_GROUP_LOCAL_KERNEL_1D(autoexposureReduceFinal_1024, GPUAutoexposureR
 OIDN_DEFINE_GROUP_KERNEL_2D(inputProcess_f16_hwc_3, GPUInputProcessKernel<half COMMA TensorLayout::hwc COMMA 3>)
 OIDN_DEFINE_GROUP_KERNEL_2D(inputProcess_f16_hwc_6, GPUInputProcessKernel<half COMMA TensorLayout::hwc COMMA 6>)
 OIDN_DEFINE_GROUP_KERNEL_2D(inputProcess_f16_hwc_9, GPUInputProcessKernel<half COMMA TensorLayout::hwc COMMA 9>)
+OIDN_DEFINE_GROUP_KERNEL_2D(inputProcess_f16_hwc_13, GPUInputProcessKernel<half COMMA TensorLayout::hwc COMMA 13>)
 
 OIDN_DEFINE_BASIC_KERNEL_2D(outputProcess_f16_hwc, GPUOutputProcessKernel<half COMMA TensorLayout::hwc>)
 

@@ -45,6 +45,8 @@ OIDN_NAMESPACE_BEGIN
     Ref<Image> color;
     Ref<Image> albedo;
     Ref<Image> normal;
+    Ref<Image> history;           // glint temporal (needs user weights)
+    Ref<Image> historyConfidence;
     Ref<Image> output;
 
     // Options

@@ -78,6 +78,10 @@ OIDN_NAMESPACE_BEGIN
       setParam(albedo, image);
     else if (name == "normal")
       setParam(normal, image);
+    else if (name == "history")
+      setParam(history, image);
+    else if (name == "historyConfidence")
+      setParam(historyConfidence, image);
     else if (name == "output")
       setParam(output, image);
     else
@@ -94,6 +98,10 @@ OIDN_NAMESPACE_BEGIN
       removeParam(albedo);
     else if (name == "normal")
       removeParam(normal);
+    else if (name == "history")
+      removeParam(history);
+    else if (name == "historyConfidence")
+      removeParam(historyConfidence);
     else if (name == "output")
       removeParam(output);
     else

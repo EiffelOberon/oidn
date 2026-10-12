@@ -27,9 +27,14 @@ OIDN_NAMESPACE_BEGIN
     TensorDesc getDstDesc() const { return dstDesc; }
     Ref<Tensor> getDst() const { return dst; }
 
+    // glint temporal: `history` (the previous output, warped; encoded like
+    // color) and `historyConfidence` (one channel, [0, 1]) follow the
+    // normal as channels 9..12.
     void setSrc(const Ref<Image>& color,
                 const Ref<Image>& albedo,
-                const Ref<Image>& normal);
+                const Ref<Image>& normal,
+                const Ref<Image>& history = nullptr,
+                const Ref<Image>& historyConfidence = nullptr);
     void setDst(const Ref<Tensor>& dst);
     void setTile(int hSrc, int wSrc, int hDst, int wDst, int H, int W);
 
@@ -46,6 +51,8 @@ OIDN_NAMESPACE_BEGIN
     Ref<Image> color;
     Ref<Image> albedo;
     Ref<Image> normal;
+    Ref<Image> history;
+    Ref<Image> historyConfidence;
     Ref<Tensor> dst;
     Tile tile;
   };

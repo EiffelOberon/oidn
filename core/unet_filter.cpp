@@ -211,7 +211,7 @@ OIDN_NAMESPACE_BEGIN
       // Set the input and output
       for (auto& instance : instances)
       {
-        instance.inputProcess->setSrc(color, albedo, normal);
+        instance.inputProcess->setSrc(color, albedo, normal, history, historyConfidence);
         instance.outputProcess->setDst(outputTemp ? outputTemp : output);
       }
 
@@ -391,6 +391,18 @@ OIDN_NAMESPACE_BEGIN
     if (input->getC() != output->getC())
       throw Exception(Error::InvalidOperation, "input/output image channel count mismatch");
 
+    if (bool(history) != bool(historyConfidence) ||
+        (history && !(color && albedo && normal)))
+      throw Exception(Error::InvalidOperation, "history needs color, albedo, normal and historyConfidence");
+    if (history && !userWeightsBlob)
+      throw Exception(Error::InvalidOperation, "history needs user weights with 13 input channels");
+    if ((history && (history->getW() != output->getW() || history->getH() != output->getH() ||
+                     !isSupportedFormat(history->getFormat()))) ||
+        (historyConfidence && (historyConfidence->getW() != output->getW() ||
+                               historyConfidence->getH() != output->getH() ||
+                               !isSupportedFormat(historyConfidence->getFormat()))))
+      throw Exception(Error::InvalidOperation, "invalid history image");
+
     if ((color  && (color->getW()  != output->getW() || color->getH()  != output->getH())) ||
         (albedo && (albedo->getW() != output->getW() || albedo->getH() != output->getH())) ||
         (normal && (normal->getW() != output->getW() || normal->getH() != output->getH())))
@@ -564,6 +576,7 @@ OIDN_NAMESPACE_BEGIN
     if (color)  inputC += 3; // always broadcast to 3 channels
     if (albedo) inputC += 3;
     if (normal) inputC += 3;
+    if (history) inputC += 4; // warped RGB + confidence
 
     // Create global operations (not part of any model instance or graph)
     Ref<Autoexposure> autoexposure;

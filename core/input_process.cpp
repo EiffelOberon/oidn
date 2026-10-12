@@ -27,18 +27,27 @@ OIDN_NAMESPACE_BEGIN
 
   void InputProcess::setSrc(const Ref<Image>& color,
                             const Ref<Image>& albedo,
-                            const Ref<Image>& normal)
+                            const Ref<Image>& normal,
+                            const Ref<Image>& history,
+                            const Ref<Image>& historyConfidence)
   {
     int C = 0;
     if (color)  C += 3; // always broadcast to 3 channels
     if (albedo) C += 3;
     if (normal) C += 3;
+    if (history) C += 3;
+    if (historyConfidence) C += 1;
     if (C != srcDims[0])
       throw std::invalid_argument("invalid input processing source");
+    if (bool(history) != bool(historyConfidence) ||
+        (history && !(color && albedo && normal)))
+      throw std::invalid_argument("history needs color, albedo, normal and confidence");
 
     this->color  = color;
     this->albedo = albedo;
     this->normal = normal;
+    this->history = history;
+    this->historyConfidence = historyConfidence;
     updateSrc();
   }
 

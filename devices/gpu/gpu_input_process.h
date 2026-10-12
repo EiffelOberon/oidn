@@ -22,6 +22,8 @@ OIDN_NAMESPACE_BEGIN
     ImageAccessor input;  // color, albedo or normal
     ImageAccessor albedo; // auxiliary albedo
     ImageAccessor normal; // auxiliary normal
+    ImageAccessor history;           // glint temporal: warped previous output
+    ImageAccessor historyConfidence; // glint temporal: [0, 1], one channel
 
     // Destination
     TensorAccessor3D<DstT, dstLayout> dst;
@@ -54,6 +56,15 @@ OIDN_NAMESPACE_BEGIN
       value = transferFunc.forward(value);
 
       return value;
+    }
+
+    // Encoded exactly like an HDR/LDR color input.
+    oidn_device_inline vec3f getHistory(int h, int w) const
+    {
+      vec3f value = history.get3(h, w);
+      value = value * transferFunc.getInputScale();
+      value = math::clamp(math::nan_to_zero(value), 0.f, hdr ? FLT_MAX : 1.f);
+      return transferFunc.forward(value);
     }
 
     oidn_device_inline vec3f getAlbedo(int h, int w) const
@@ -113,6 +124,16 @@ OIDN_NAMESPACE_BEGIN
             values[6] = normalValue.x;
             values[7] = normalValue.y;
             values[8] = normalValue.z;
+
+            if (dstPaddedC >= 13 && history.ptr)
+            {
+              const vec3f historyValue = getHistory(hSrc, wSrc);
+              values[9]  = historyValue.x;
+              values[10] = historyValue.y;
+              values[11] = historyValue.z;
+              values[12] = math::clamp(math::nan_to_zero(
+                  historyConfidence.get3(hSrc, wSrc).x), 0.f, 1.f);
+            }
           }
         }
       }
@@ -134,7 +155,7 @@ OIDN_NAMESPACE_BEGIN
         float dstBlock = 0;
 
         #pragma unroll
-        for (int c = 0; c < min(dstPaddedC, 9); ++c) // only up to 9 non-zero channels
+        for (int c = 0; c < min(dstPaddedC, 13); ++c) // only up to 13 non-zero channels
         {
           const auto value = it.subgroupBroadcast(values[c], i);
           dstBlock = (subgroupLocalID == c) ? value : dstBlock;
@@ -154,7 +175,7 @@ OIDN_NAMESPACE_BEGIN
         float dstBlock = 0;
 
         #pragma unroll
-        for (int c = 0; c < min(dstPaddedC, 9); ++c) // only up to 9 non-zero channels
+        for (int c = 0; c < min(dstPaddedC, 13); ++c) // only up to 13 non-zero channels
         {
           const auto value = it.subgroupShuffle(values[c], wBlock);
           dstBlock = (subgroupLocalID % dstPaddedC) == c ? value : dstBlock;
@@ -211,6 +232,7 @@ OIDN_NAMESPACE_BEGIN
       case  3: submitImpl<3>(); break;
       case  6: submitImpl<6>(); break;
       case  9: submitImpl<9>(); break;
+      case 13: submitImpl<13>(); break;
       default: throw std::logic_error("unsupported input processing source channel count");
       }
     }
@@ -244,6 +266,8 @@ OIDN_NAMESPACE_BEGIN
       kernel.input  = color ? *color : (albedo ? *albedo : *normal);
       kernel.albedo = (color && albedo) ? *albedo : nullImage;
       kernel.normal = (color && normal) ? *normal : nullImage;
+      kernel.history = history ? *history : nullImage;
+      kernel.historyConfidence = historyConfidence ? *historyConfidence : nullImage;
       kernel.dst    = *dst;
       kernel.tile   = tile;
       kernel.transferFunc = *transferFunc;
@@ -260,6 +284,8 @@ OIDN_NAMESPACE_BEGIN
                            {color  ? color->getBuffer()  : nullptr,
                             albedo ? albedo->getBuffer() : nullptr,
                             normal ? normal->getBuffer() : nullptr,
+                            history ? history->getBuffer() : nullptr,
+                            historyConfidence ? historyConfidence->getBuffer() : nullptr,
                             dst->getBuffer(),
                             scratch});
     #else

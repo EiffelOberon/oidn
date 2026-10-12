@@ -26,6 +26,7 @@ void printUsage()
             << "                   [-f/--filter RT|RTLightmap]" << std::endl
             << "                   [--hdr color.pfm] [--ldr color.pfm] [--srgb] [--dir directional.pfm]" << std::endl
             << "                   [--alb albedo.pfm] [--nrm normal.pfm] [--clean_aux]" << std::endl
+            << "                   [--hist history.pfm --conf confidence.pfm] (glint temporal, needs -w)" << std::endl
             << "                   [--is/--input_scale value]" << std::endl
             << "                   [-o/--output output.pfm]" << std::endl
             << "                   [-r/--ref reference_output.pfm] [--maxerror e]" << std::endl
@@ -77,6 +78,7 @@ int main(int argc, char* argv[])
   PhysicalDeviceRef physicalDevice;
   std::string filterType = "RT";
   std::string colorFilename, albedoFilename, normalFilename;
+  std::string historyFilename, confidenceFilename;
   std::string outputFilename, refFilename;
   std::string weightsFilename;
   Quality quality = Quality::Default;
@@ -137,6 +139,10 @@ int main(int argc, char* argv[])
       }
       else if (opt == "alb" || opt == "albedo")
         albedoFilename = args.getNextValue();
+      else if (opt == "hist" || opt == "history")
+        historyFilename = args.getNextValue();
+      else if (opt == "conf" || opt == "confidence")
+        confidenceFilename = args.getNextValue();
       else if (opt == "nrm" || opt == "normal")
         normalFilename = args.getNextValue();
       else if (opt == "o" || opt == "out" || opt == "output")
@@ -262,7 +268,7 @@ int main(int argc, char* argv[])
 
     // Load the input image
     std::shared_ptr<ImageBuffer> input, ref;
-    std::shared_ptr<ImageBuffer> color, albedo, normal;
+    std::shared_ptr<ImageBuffer> color, albedo, normal, history, confidence;
 
     std::cout << "Loading input" << std::endl;
 
@@ -282,6 +288,19 @@ int main(int argc, char* argv[])
     {
       input = color = loadImage(device, colorFilename, srgb, dataType, bufferStorage);
       color->toDevice();
+    }
+
+    if (!historyFilename.empty())
+    {
+      history = loadImage(device, historyFilename, false, dataType, bufferStorage);
+      history->toDevice();
+    }
+
+    if (!confidenceFilename.empty())
+    {
+      // The confidence is the first channel.
+      confidence = loadImage(device, confidenceFilename, false, dataType, bufferStorage);
+      confidence->toDevice();
     }
 
     if (!input)
@@ -332,6 +351,10 @@ int main(int argc, char* argv[])
       filter.setImage("albedo", albedo->getBuffer(), albedo->getFormat(), albedo->getW(), albedo->getH());
     if (normal)
       filter.setImage("normal", normal->getBuffer(), normal->getFormat(), normal->getW(), normal->getH());
+    if (history)
+      filter.setImage("history", history->getBuffer(), history->getFormat(), history->getW(), history->getH());
+    if (confidence)
+      filter.setImage("historyConfidence", confidence->getBuffer(), confidence->getFormat(), confidence->getW(), confidence->getH());
 
     filter.setImage("output", output->getBuffer(), output->getFormat(), output->getW(), output->getH());
 
