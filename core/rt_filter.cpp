@@ -82,6 +82,12 @@ OIDN_NAMESPACE_BEGIN
       setParam(history, image);
     else if (name == "historyConfidence")
       setParam(historyConfidence, image);
+    else if (name == "extra0")
+      setParam(extra0, image);
+    else if (name == "extra1")
+      setParam(extra1, image);
+    else if (name == "extra2")
+      setParam(extra2, image);
     else if (name == "output")
       setParam(output, image);
     else
@@ -102,6 +108,12 @@ OIDN_NAMESPACE_BEGIN
       removeParam(history);
     else if (name == "historyConfidence")
       removeParam(historyConfidence);
+    else if (name == "extra0")
+      removeParam(extra0);
+    else if (name == "extra1")
+      removeParam(extra1);
+    else if (name == "extra2")
+      removeParam(extra2);
     else if (name == "output")
       removeParam(output);
     else

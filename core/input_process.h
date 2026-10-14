@@ -29,12 +29,16 @@ OIDN_NAMESPACE_BEGIN
 
     // glint temporal: `history` (the previous output, warped; encoded like
     // color) and `historyConfidence` (one channel, [0, 1]) follow the
-    // normal as channels 9..12.
+    // normal as channels 9..12; `extra` (three 3-channel images, already
+    // encoded by the caller, clamped to [-1, 1]) are channels 13..21.
     void setSrc(const Ref<Image>& color,
                 const Ref<Image>& albedo,
                 const Ref<Image>& normal,
                 const Ref<Image>& history = nullptr,
-                const Ref<Image>& historyConfidence = nullptr);
+                const Ref<Image>& historyConfidence = nullptr,
+                const Ref<Image>& extra0 = nullptr,
+                const Ref<Image>& extra1 = nullptr,
+                const Ref<Image>& extra2 = nullptr);
     void setDst(const Ref<Tensor>& dst);
     void setTile(int hSrc, int wSrc, int hDst, int wDst, int H, int W);
 
@@ -53,6 +57,7 @@ OIDN_NAMESPACE_BEGIN
     Ref<Image> normal;
     Ref<Image> history;
     Ref<Image> historyConfidence;
+    Ref<Image> extra0, extra1, extra2;
     Ref<Tensor> dst;
     Tile tile;
   };

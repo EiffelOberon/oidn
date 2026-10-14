@@ -211,7 +211,8 @@ OIDN_NAMESPACE_BEGIN
       // Set the input and output
       for (auto& instance : instances)
       {
-        instance.inputProcess->setSrc(color, albedo, normal, history, historyConfidence);
+        instance.inputProcess->setSrc(color, albedo, normal, history, historyConfidence,
+                                      extra0, extra1, extra2);
         instance.outputProcess->setDst(outputTemp ? outputTemp : output);
       }
 
@@ -402,6 +403,13 @@ OIDN_NAMESPACE_BEGIN
                                historyConfidence->getH() != output->getH() ||
                                !isSupportedFormat(historyConfidence->getFormat()))))
       throw Exception(Error::InvalidOperation, "invalid history image");
+    const bool extra = extra0 || extra1 || extra2;
+    if (extra && !(history && extra0 && extra1 && extra2))
+      throw Exception(Error::InvalidOperation, "extra inputs need history and all of extra0..2");
+    for (const Ref<Image>* image : {&extra0, &extra1, &extra2})
+      if (*image && ((*image)->getW() != output->getW() || (*image)->getH() != output->getH() ||
+                     !isSupportedFormat((*image)->getFormat())))
+        throw Exception(Error::InvalidOperation, "invalid extra image");
 
     if ((color  && (color->getW()  != output->getW() || color->getH()  != output->getH())) ||
         (albedo && (albedo->getW() != output->getW() || albedo->getH() != output->getH())) ||
@@ -577,6 +585,7 @@ OIDN_NAMESPACE_BEGIN
     if (albedo) inputC += 3;
     if (normal) inputC += 3;
     if (history) inputC += 4; // warped RGB + confidence
+    if (extra0)  inputC += 9; // extra0..2
 
     // Create global operations (not part of any model instance or graph)
     Ref<Autoexposure> autoexposure;

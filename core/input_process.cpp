@@ -29,7 +29,10 @@ OIDN_NAMESPACE_BEGIN
                             const Ref<Image>& albedo,
                             const Ref<Image>& normal,
                             const Ref<Image>& history,
-                            const Ref<Image>& historyConfidence)
+                            const Ref<Image>& historyConfidence,
+                            const Ref<Image>& extra0,
+                            const Ref<Image>& extra1,
+                            const Ref<Image>& extra2)
   {
     int C = 0;
     if (color)  C += 3; // always broadcast to 3 channels
@@ -37,17 +40,24 @@ OIDN_NAMESPACE_BEGIN
     if (normal) C += 3;
     if (history) C += 3;
     if (historyConfidence) C += 1;
+    const bool extra = extra0 || extra1 || extra2;
+    if (extra) C += 9;
     if (C != srcDims[0])
       throw std::invalid_argument("invalid input processing source");
     if (bool(history) != bool(historyConfidence) ||
         (history && !(color && albedo && normal)))
       throw std::invalid_argument("history needs color, albedo, normal and confidence");
+    if (extra && !(history && extra0 && extra1 && extra2))
+      throw std::invalid_argument("extra inputs need history and all of extra0..2");
 
     this->color  = color;
     this->albedo = albedo;
     this->normal = normal;
     this->history = history;
     this->historyConfidence = historyConfidence;
+    this->extra0 = extra0;
+    this->extra1 = extra1;
+    this->extra2 = extra2;
     updateSrc();
   }
 

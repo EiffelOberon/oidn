@@ -24,6 +24,7 @@ OIDN_NAMESPACE_BEGIN
     ImageAccessor normal; // auxiliary normal
     ImageAccessor history;           // glint temporal: warped previous output
     ImageAccessor historyConfidence; // glint temporal: [0, 1], one channel
+    ImageAccessor extra0, extra1, extra2; // glint temporal: pre-encoded, [-1, 1]
 
     // Destination
     TensorAccessor3D<DstT, dstLayout> dst;
@@ -133,6 +134,16 @@ OIDN_NAMESPACE_BEGIN
               values[11] = historyValue.z;
               values[12] = math::clamp(math::nan_to_zero(
                   historyConfidence.get3(hSrc, wSrc).x), 0.f, 1.f);
+
+              if (dstPaddedC >= 22 && extra0.ptr)
+              {
+                const vec3f e0 = math::clamp(math::nan_to_zero(extra0.get3(hSrc, wSrc)), -1.f, 1.f);
+                const vec3f e1 = math::clamp(math::nan_to_zero(extra1.get3(hSrc, wSrc)), -1.f, 1.f);
+                const vec3f e2 = math::clamp(math::nan_to_zero(extra2.get3(hSrc, wSrc)), -1.f, 1.f);
+                values[13] = e0.x; values[14] = e0.y; values[15] = e0.z;
+                values[16] = e1.x; values[17] = e1.y; values[18] = e1.z;
+                values[19] = e2.x; values[20] = e2.y; values[21] = e2.z;
+              }
             }
           }
         }
@@ -155,7 +166,7 @@ OIDN_NAMESPACE_BEGIN
         float dstBlock = 0;
 
         #pragma unroll
-        for (int c = 0; c < min(dstPaddedC, 13); ++c) // only up to 13 non-zero channels
+        for (int c = 0; c < min(dstPaddedC, 22); ++c) // only up to 22 non-zero channels
         {
           const auto value = it.subgroupBroadcast(values[c], i);
           dstBlock = (subgroupLocalID == c) ? value : dstBlock;
@@ -175,7 +186,7 @@ OIDN_NAMESPACE_BEGIN
         float dstBlock = 0;
 
         #pragma unroll
-        for (int c = 0; c < min(dstPaddedC, 13); ++c) // only up to 13 non-zero channels
+        for (int c = 0; c < min(dstPaddedC, 22); ++c) // only up to 22 non-zero channels
         {
           const auto value = it.subgroupShuffle(values[c], wBlock);
           dstBlock = (subgroupLocalID % dstPaddedC) == c ? value : dstBlock;
@@ -233,6 +244,7 @@ OIDN_NAMESPACE_BEGIN
       case  6: submitImpl<6>(); break;
       case  9: submitImpl<9>(); break;
       case 13: submitImpl<13>(); break;
+      case 22: submitImpl<22>(); break;
       default: throw std::logic_error("unsupported input processing source channel count");
       }
     }
@@ -268,6 +280,9 @@ OIDN_NAMESPACE_BEGIN
       kernel.normal = (color && normal) ? *normal : nullImage;
       kernel.history = history ? *history : nullImage;
       kernel.historyConfidence = historyConfidence ? *historyConfidence : nullImage;
+      kernel.extra0 = extra0 ? *extra0 : nullImage;
+      kernel.extra1 = extra1 ? *extra1 : nullImage;
+      kernel.extra2 = extra2 ? *extra2 : nullImage;
       kernel.dst    = *dst;
       kernel.tile   = tile;
       kernel.transferFunc = *transferFunc;
@@ -286,6 +301,9 @@ OIDN_NAMESPACE_BEGIN
                             normal ? normal->getBuffer() : nullptr,
                             history ? history->getBuffer() : nullptr,
                             historyConfidence ? historyConfidence->getBuffer() : nullptr,
+                            extra0 ? extra0->getBuffer() : nullptr,
+                            extra1 ? extra1->getBuffer() : nullptr,
+                            extra2 ? extra2->getBuffer() : nullptr,
                             dst->getBuffer(),
                             scratch});
     #else

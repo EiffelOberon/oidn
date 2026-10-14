@@ -47,6 +47,8 @@ OIDN_NAMESPACE_BEGIN
     Ref<Image> normal;
     Ref<Image> history;           // glint temporal (needs user weights)
     Ref<Image> historyConfidence;
+    // glint temporal: three pre-encoded 3-channel inputs (channels 13..21)
+    Ref<Image> extra0, extra1, extra2;
     Ref<Image> output;
 
     // Options
