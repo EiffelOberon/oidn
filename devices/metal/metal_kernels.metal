@@ -5,6 +5,7 @@
 #include "../gpu/gpu_input_process.h"
 #include "../gpu/gpu_output_process.h"
 #include "../gpu/gpu_image_copy.h"
+#include "../gpu/gpu_pool.h"
 
 OIDN_NAMESPACE_USING
 
@@ -79,3 +80,6 @@ OIDN_DEFINE_GROUP_KERNEL_2D(inputProcess_f16_hwc_22, GPUInputProcessKernel<half 
 OIDN_DEFINE_BASIC_KERNEL_2D(outputProcess_f16_hwc, GPUOutputProcessKernel<half COMMA TensorLayout::hwc>)
 
 OIDN_DEFINE_BASIC_KERNEL_2D(imageCopy, GPUImageCopyKernel)
+
+// glint temporal: standalone 2x2 max pooling (multi-scale input injection)
+OIDN_DEFINE_BASIC_KERNEL_2D(pool_f16_hwc, GPUPool2DKernel<half>)

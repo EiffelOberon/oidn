@@ -282,6 +282,10 @@ OIDN_NAMESPACE_BEGIN
     auto constTensors = parseTZA(weightsBlob.ptr, weightsBlob.size);
     const bool fastMath = quality != Quality::High;
     largeModel = constTensors->find("enc_conv1b.weight") != constTensors->end();
+    multiScale = !largeModel &&
+                 constTensors->count("enc_conv1.weight") && constTensors->count("enc_conv2.weight") &&
+                 constTensors->at("enc_conv2.weight")->getDims()[1] !=
+                   constTensors->at("enc_conv1.weight")->getDims()[0];
 
     // Compute final device-dependent tile alignment and overlap
     const int receptiveField = largeModel ? receptiveFieldLarge : receptiveFieldBase;
@@ -539,6 +543,47 @@ OIDN_NAMESPACE_BEGIN
     return x;
   }
 
+  Ref<Op> UNetFilter::addUNetMultiScale(const Ref<Graph>& graph, const Ref<Op>& inputProcess)
+  {
+    // The input at 1/2 .. 1/16 resolution (2x2 max pools, as the encoder's).
+    auto in1 = graph->addPool("input_pool1", inputProcess);
+    auto in2 = graph->addPool("input_pool2", in1);
+    auto in3 = graph->addPool("input_pool3", in2);
+    auto in4 = graph->addPool("input_pool4", in3);
+
+    auto x = graph->addConv("enc_conv0", inputProcess, Activation::ReLU);
+
+    auto pool1 = graph->addConvPool("enc_conv1", x, Activation::ReLU);
+
+    x = graph->addConcatConv("enc_conv2", pool1, in1, Activation::ReLU);
+    auto pool2 = graph->addPool("enc_conv2_pool", x);
+
+    x = graph->addConcatConv("enc_conv3", pool2, in2, Activation::ReLU);
+    auto pool3 = graph->addPool("enc_conv3_pool", x);
+
+    x = graph->addConcatConv("enc_conv4", pool3, in3, Activation::ReLU);
+    auto pool4 = graph->addPool("enc_conv4_pool", x);
+
+    x = graph->addConcatConv("enc_conv5a", pool4, in4, Activation::ReLU);
+    x = graph->addConv("enc_conv5b", x, Activation::ReLU);
+
+    x = graph->addUpsampleConcatConv("dec_conv4a", x, pool3, Activation::ReLU);
+    x = graph->addConv("dec_conv4b", x, Activation::ReLU);
+
+    x = graph->addUpsampleConcatConv("dec_conv3a", x, pool2, Activation::ReLU);
+    x = graph->addConv("dec_conv3b", x, Activation::ReLU);
+
+    x = graph->addUpsampleConcatConv("dec_conv2a", x, pool1, Activation::ReLU);
+    x = graph->addConv("dec_conv2b", x, Activation::ReLU);
+
+    x = graph->addUpsampleConcatConv("dec_conv1a", x, inputProcess, Activation::ReLU);
+    x = graph->addConv("dec_conv1b", x, Activation::ReLU);
+
+    x = graph->addConv("dec_conv0", x, Activation::ReLU);
+
+    return x;
+  }
+
   Ref<Op> UNetFilter::addUNetLarge(const Ref<Graph>& graph, const Ref<Op>& inputProcess)
   {
     auto x = graph->addConv("enc_conv1a", inputProcess, Activation::ReLU);
@@ -604,7 +649,9 @@ OIDN_NAMESPACE_BEGIN
 
       // Create the model graph
       auto inputProcess = graph->addInputProcess("input", inputDims, transferFunc, hdr, snorm);
-      auto x = largeModel ? addUNetLarge(graph, inputProcess) : addUNet(graph, inputProcess);
+      auto x = largeModel ? addUNetLarge(graph, inputProcess)
+             : multiScale ? addUNetMultiScale(graph, inputProcess)
+                          : addUNet(graph, inputProcess);
       auto outputProcess = graph->addOutputProcess("output", x, transferFunc, hdr, snorm);
 
       // Check whether all operations in the graph are supported

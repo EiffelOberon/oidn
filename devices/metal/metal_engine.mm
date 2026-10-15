@@ -12,6 +12,7 @@
 #include "../gpu/gpu_input_process.h"
 #include "../gpu/gpu_output_process.h"
 #include "../gpu/gpu_image_copy.h"
+#include "../gpu/gpu_pool.h"
 
 OIDN_NAMESPACE_BEGIN
 
@@ -130,7 +131,8 @@ OIDN_NAMESPACE_BEGIN
 
   Ref<Pool> MetalEngine::newPool(const PoolDesc& desc)
   {
-    throw std::logic_error("operation is not implemented");
+    // glint temporal fork: standalone pooling for multi-scale input injection
+    return makeRef<GPUPool<MetalEngine, half, TensorLayout::hwc>>(this, desc);
   }
 
   Ref<Upsample> MetalEngine::newUpsample(const UpsampleDesc& desc)

@@ -98,6 +98,7 @@ OIDN_NAMESPACE_BEGIN
     Data getWeights();
     Ref<Op> addUNet(const Ref<Graph>& graph, const Ref<Op>& inputProcess);
     Ref<Op> addUNetLarge(const Ref<Graph>& graph, const Ref<Op>& inputProcess);
+    Ref<Op> addUNetMultiScale(const Ref<Graph>& graph, const Ref<Op>& inputProcess);
     bool buildModel(size_t maxMemoryByteSize = std::numeric_limits<size_t>::max());
     void resetModel();
 
@@ -130,6 +131,10 @@ OIDN_NAMESPACE_BEGIN
     Ref<ImageCopy> imageCopy;
     Ref<Image> outputTemp;
     bool largeModel = false; // is UNetLarge?
+    // glint temporal: the small U-Net with the input, max-pooled to each
+    // encoder scale, also fed to enc_conv2..enc_conv5a (detected from the
+    // weights: enc_conv2 takes more channels than enc_conv1 produces).
+    bool multiScale = false;
   };
 
 OIDN_NAMESPACE_END
