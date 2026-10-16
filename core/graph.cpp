@@ -52,10 +52,13 @@ OIDN_NAMESPACE_BEGIN
                                              const Ref<Op>& srcOp,
                                              const std::shared_ptr<TransferFunction>& transferFunc,
                                              bool hdr,
-                                             bool snorm)
+                                             bool snorm,
+                                             int channelOffset,
+                                             bool raw)
   {
     auto srcAlloc = tensorAllocs[srcOp.get()];
-    auto op = engine->newOutputProcess({srcAlloc->desc, transferFunc, hdr, snorm});
+    auto op = engine->newOutputProcess({srcAlloc->desc, transferFunc, hdr, snorm,
+                                        channelOffset, raw});
     op->setName(name);
     addOp(op, {srcOp});
 

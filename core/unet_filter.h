@@ -49,6 +49,9 @@ OIDN_NAMESPACE_BEGIN
     Ref<Image> historyConfidence;
     // glint temporal: three pre-encoded 3-channel inputs (channels 13..21)
     Ref<Image> extra0, extra1, extra2;
+    // glint temporal: the hidden-state outputs (network output channels
+    // 3..11, raw), when the weights' dec_conv0 has 12 outputs
+    Ref<Image> state0, state1, state2;
     Ref<Image> output;
 
     // Options
@@ -121,6 +124,7 @@ OIDN_NAMESPACE_BEGIN
       Ref<Graph> graph;
       Ref<InputProcess> inputProcess;
       Ref<OutputProcess> outputProcess;
+      std::vector<Ref<OutputProcess>> stateProcesses; // glint temporal
     };
 
     // Model
@@ -135,6 +139,8 @@ OIDN_NAMESPACE_BEGIN
     // encoder scale, also fed to enc_conv2..enc_conv5a (detected from the
     // weights: enc_conv2 takes more channels than enc_conv1 produces).
     bool multiScale = false;
+    // glint temporal: hidden-state output channels (dec_conv0 outputs - 3)
+    int stateChannels = 0;
   };
 
 OIDN_NAMESPACE_END

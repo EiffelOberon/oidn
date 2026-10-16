@@ -34,7 +34,9 @@ OIDN_NAMESPACE_BEGIN
                                         const Ref<Op>& srcOp,
                                         const std::shared_ptr<TransferFunction>& transferFunc,
                                         bool hdr,
-                                        bool snorm);
+                                        bool snorm,
+                                        int channelOffset = 0,
+                                        bool raw = false);
 
     Ref<Op> addConv(const std::string& name,
                     const Ref<Op>& srcOp,

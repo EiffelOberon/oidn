@@ -214,6 +214,9 @@ OIDN_NAMESPACE_BEGIN
         instance.inputProcess->setSrc(color, albedo, normal, history, historyConfidence,
                                       extra0, extra1, extra2);
         instance.outputProcess->setDst(outputTemp ? outputTemp : output);
+        const Ref<Image> states[3] = {state0, state1, state2};
+        for (size_t k = 0; k < instance.stateProcesses.size(); ++k)
+          instance.stateProcesses[k]->setDst(states[k]);
       }
 
       // Iterate over the tiles
@@ -250,6 +253,11 @@ OIDN_NAMESPACE_BEGIN
             alignOffsetH + overlapBeginH, alignOffsetW + overlapBeginW,
             h + overlapBeginH, w + overlapBeginW,
             tileH2, tileW2);
+          for (auto& stateProcess : instance.stateProcesses)
+            stateProcess->setTile(
+              alignOffsetH + overlapBeginH, alignOffsetW + overlapBeginW,
+              h + overlapBeginH, w + overlapBeginW,
+              tileH2, tileW2);
 
           //printf("Tile: %d %d -> %d %d\n", w+overlapBeginW, h+overlapBeginH, w+overlapBeginW+tileW2, h+overlapBeginH+tileH2);
 
@@ -282,6 +290,13 @@ OIDN_NAMESPACE_BEGIN
     auto constTensors = parseTZA(weightsBlob.ptr, weightsBlob.size);
     const bool fastMath = quality != Quality::High;
     largeModel = constTensors->find("enc_conv1b.weight") != constTensors->end();
+    stateChannels = 0;
+    if (!largeModel && constTensors->count("dec_conv0.weight"))
+      stateChannels = constTensors->at("dec_conv0.weight")->getDims()[0] - 3;
+    if (stateChannels != 0 && stateChannels != 9)
+      throw Exception(Error::InvalidOperation, "hidden state needs 3 + 9 output channels");
+    if (stateChannels && !(state0 && state1 && state2))
+      throw Exception(Error::InvalidOperation, "hidden-state weights need state0..2 images");
     multiScale = !largeModel &&
                  constTensors->count("enc_conv1.weight") && constTensors->count("enc_conv2.weight") &&
                  constTensors->at("enc_conv2.weight")->getDims()[1] !=
@@ -538,7 +553,7 @@ OIDN_NAMESPACE_BEGIN
     x = graph->addUpsampleConcatConv("dec_conv1a", x, inputProcess, Activation::ReLU);
     x = graph->addConv("dec_conv1b", x, Activation::ReLU);
 
-    x = graph->addConv("dec_conv0", x, Activation::ReLU);
+    x = graph->addConv("dec_conv0", x, stateChannels ? Activation::None : Activation::ReLU);
 
     return x;
   }
@@ -579,7 +594,9 @@ OIDN_NAMESPACE_BEGIN
     x = graph->addUpsampleConcatConv("dec_conv1a", x, inputProcess, Activation::ReLU);
     x = graph->addConv("dec_conv1b", x, Activation::ReLU);
 
-    x = graph->addConv("dec_conv0", x, Activation::ReLU);
+    // glint temporal: hidden-state channels stay signed (the output process
+    // clamps the RGB channels to >= 0 anyway)
+    x = graph->addConv("dec_conv0", x, stateChannels ? Activation::None : Activation::ReLU);
 
     return x;
   }
@@ -653,6 +670,10 @@ OIDN_NAMESPACE_BEGIN
              : multiScale ? addUNetMultiScale(graph, inputProcess)
                           : addUNet(graph, inputProcess);
       auto outputProcess = graph->addOutputProcess("output", x, transferFunc, hdr, snorm);
+      std::vector<Ref<OutputProcess>> stateProcesses;
+      for (int k = 0; k < stateChannels / 3; ++k)
+        stateProcesses.push_back(graph->addOutputProcess(
+          "state" + std::to_string(k), x, transferFunc, hdr, snorm, 3 + 3 * k, true));
 
       // Check whether all operations in the graph are supported
       if (!graph->isSupported())
@@ -722,6 +743,7 @@ OIDN_NAMESPACE_BEGIN
 
       instance.inputProcess  = inputProcess;
       instance.outputProcess = outputProcess;
+      instance.stateProcesses = stateProcesses;
     }
 
     // Finalize the global operations
@@ -750,6 +772,7 @@ OIDN_NAMESPACE_BEGIN
       instance.graph->clear();
       instance.inputProcess.reset();
       instance.outputProcess.reset();
+      instance.stateProcesses.clear();
     }
 
     autoexposure.reset();

@@ -31,6 +31,8 @@ OIDN_NAMESPACE_BEGIN
     TransferFunction transferFunc;
     bool hdr;
     bool snorm; // signed normalized ([-1..1])
+    int channelOffset; // glint temporal: first source channel
+    bool raw;          // glint temporal: store the channels unchanged
 
     oidn_device_inline void operator ()(const oidn_private WorkItem<2>& it) const
     {
@@ -43,7 +45,13 @@ OIDN_NAMESPACE_BEGIN
       const int wDst = w + tile.wDstBegin;
 
       // Load
-      vec3f value = src.get3(0, hSrc, wSrc);
+      vec3f value = src.get3(channelOffset, hSrc, wSrc);
+
+      if (raw)
+      {
+        dst.set3(hDst, wDst, math::nan_to_zero(value));
+        return;
+      }
 
       // The CNN output may contain negative values or even NaNs, so it must be sanitized
       value = math::clamp(math::nan_to_zero(value), 0.f, FLT_MAX);
@@ -110,6 +118,8 @@ OIDN_NAMESPACE_BEGIN
       kernel.transferFunc = *transferFunc;
       kernel.hdr = hdr;
       kernel.snorm = snorm;
+      kernel.channelOffset = channelOffset;
+      kernel.raw = raw;
 
     #if defined(OIDN_COMPILE_METAL)
       engine->submitKernel(WorkDim<2>(tile.H, tile.W), kernel,

@@ -88,6 +88,12 @@ OIDN_NAMESPACE_BEGIN
       setParam(extra1, image);
     else if (name == "extra2")
       setParam(extra2, image);
+    else if (name == "state0")
+      setParam(state0, image);
+    else if (name == "state1")
+      setParam(state1, image);
+    else if (name == "state2")
+      setParam(state2, image);
     else if (name == "output")
       setParam(output, image);
     else
@@ -114,6 +120,12 @@ OIDN_NAMESPACE_BEGIN
       removeParam(extra1);
     else if (name == "extra2")
       removeParam(extra2);
+    else if (name == "state0")
+      removeParam(state0);
+    else if (name == "state1")
+      removeParam(state1);
+    else if (name == "state2")
+      removeParam(state2);
     else if (name == "output")
       removeParam(output);
     else

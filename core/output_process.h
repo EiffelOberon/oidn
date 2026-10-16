@@ -17,6 +17,11 @@ OIDN_NAMESPACE_BEGIN
     std::shared_ptr<TransferFunction> transferFunc;
     bool hdr;
     bool snorm;
+    // glint temporal: read 3 channels from this source channel, and with
+    // `raw` store them unchanged (no transfer function or clamping): the
+    // network's hidden-state outputs.
+    int channelOffset;
+    bool raw;
   };
 
   class OutputProcess : public BaseOp, protected OutputProcessDesc
